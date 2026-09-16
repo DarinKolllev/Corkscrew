@@ -82,6 +82,7 @@ size = Vector3(4, 1, 4)
 
 [node name="GapPlatform_CSGBox3D2" type="CSGBox3D" parent="Obstacles_Node3D" unique_id=1355558991]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0.5, -15)
+use_collision = true
 size = Vector3(4, 1, 4)
 
 [node name="LowBar_CSGBox3D" type="CSGBox3D" parent="Obstacles_Node3D" unique_id=1217379805]
@@ -91,11 +92,11 @@ size = Vector3(6, 1, 0.5)
 
 [node name="TallBox_CSGBox3D" type="CSGBox3D" parent="Obstacles_Node3D" unique_id=1926830855]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 1.25, 0)
+use_collision = true
 size = Vector3(3, 2.5, 3)
 
 [node name="player" parent="." unique_id=499967983 instance=ExtResource("1_f3sb7")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 11.863993)
-up_direction = Vector3(0, 0.14000729, 0.9901505)
 
 [node name="Floor" type="StaticBody3D" parent="." unique_id=31520729]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)

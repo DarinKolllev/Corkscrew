@@ -11,6 +11,7 @@ extends CharacterBody3D
 @export var slide_duration := 0.8
 @export var wall_run_speed := 7.0
 @export var wall_jump_force := 6.0
+@export var wall_run_max_time := 1.2
 
 # Physics
 var gravity := 20.0
@@ -21,6 +22,7 @@ var is_wall_running := false
 var wall_normal := Vector3.ZERO
 var grounded := false
 var jump_cooldown := 0.0
+var wall_run_timer := 0.0
 
 # Node references
 @onready var head: Node3D = $Head
@@ -44,24 +46,13 @@ func _input(event: InputEvent) -> void:
 		else:
 			Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 
-func check_grounded() -> bool:
-	var space_state := get_world_3d().direct_space_state
-	# Cast ray from player center down to just below feet
-	var query := PhysicsRayQueryParameters3D.create(
-		global_position,
-		global_position + Vector3.DOWN * 1.0
-	)
-	query.exclude = [self]
-	var result := space_state.intersect_ray(query)
-	return result.size() > 0
-
 func _physics_process(delta: float) -> void:
 	# Update jump cooldown
 	if jump_cooldown > 0:
 		jump_cooldown -= delta
 		grounded = false
 	else:
-		grounded = check_grounded()
+		grounded = is_on_floor()
 	
 	# Apply gravity when not grounded
 	if not grounded and not is_wall_running:
@@ -90,8 +81,11 @@ func _physics_process(delta: float) -> void:
 			velocity.x = direction.x * current_speed
 			velocity.z = direction.z * current_speed
 		else:
-			velocity.x = move_toward(velocity.x, 0, current_speed)
-			velocity.z = move_toward(velocity.z, 0, current_speed)
+			velocity.x = move_toward(velocity.x, 0, current_speed * delta * 6.0)
+			velocity.z = move_toward(velocity.z, 0, current_speed * delta * 6.0)
+
+	
+
 	
 	# Slide
 	if Input.is_action_just_pressed("slide") and grounded and not is_sliding:
@@ -131,6 +125,7 @@ func end_slide() -> void:
 
 func check_wall_run() -> void:
 	var space_state := get_world_3d().direct_space_state
+
 	
 	# Check left and right for walls
 	for dir in [transform.basis.x, -transform.basis.x]:
@@ -141,11 +136,18 @@ func check_wall_run() -> void:
 		query.exclude = [self]
 		var result := space_state.intersect_ray(query)
 		
+		
 		# Need some speed to wall run
 		if result and velocity.length() > 3.0:
+		
 			wall_normal = result.normal
 			is_wall_running = true
+			wall_run_timer += get_physics_process_delta_time()
+			if wall_run_timer > wall_run_max_time:
+				is_wall_running = false
+				return
 			velocity.y = -1.0  # Slow fall during wall run
+			
 			
 			# Move along wall
 			var wall_forward := wall_normal.cross(Vector3.UP).normalized()
@@ -154,5 +156,4 @@ func check_wall_run() -> void:
 			velocity.x = wall_forward.x * wall_run_speed
 			velocity.z = wall_forward.z * wall_run_speed
 			return
-	
 	is_wall_running = false
