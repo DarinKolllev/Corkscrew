@@ -21,6 +21,7 @@ SaveManager="*uid://c8sp0xe42xumc"
 GameState="*uid://dk6mx6e1yydj7"
 InputBuffer="*uid://5jhw2ker7npj"
 AudioManager="*uid://05v6cibikegd"
+day_night="*uid://c471s05kgrjmp"
 
 [filesystem]
 

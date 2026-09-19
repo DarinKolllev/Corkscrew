@@ -3,6 +3,7 @@
 [ext_resource type="PackedScene" uid="uid://d1xu2a3j78m6l" path="res://player.tscn" id="1_f3sb7"]
 [ext_resource type="Texture2D" uid="uid://d1f8gjiwet3sr" path="res://textures/Metal053B_1K-JPG_Roughness.jpg" id="1_fj7yv"]
 [ext_resource type="Texture2D" uid="uid://cms4ah4alt23s" path="res://textures/5FL0aasXQM0-HD.jpg" id="2_tlwt5"]
+[ext_resource type="Script" uid="uid://c471s05kgrjmp" path="res://day_night.gd" id="4_aqk2v"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_f3sb7"]
 
@@ -12,6 +13,13 @@ sky_material = SubResource("ProceduralSkyMaterial_f3sb7")
 [sub_resource type="Environment" id="Environment_tlwt5"]
 background_mode = 2
 sky = SubResource("Sky_fj7yv")
+ambient_light_source = 3
+tonemap_mode = 3
+ssao_enabled = true
+glow_enabled = true
+fog_enabled = true
+fog_density = 0.005
+fog_sky_affect = 0.3
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_f3sb7"]
 albedo_texture = ExtResource("1_fj7yv")
@@ -30,6 +38,7 @@ size = Vector3(100, 1, 100)
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=351834100]
 transform = Transform3D(1, 0, 0, 0, 0.70710677, 0.70710677, 0, -0.70710677, 0.70710677, 0, 0, 0)
 shadow_enabled = true
+shadow_bias = 0.3
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="." unique_id=1719097146]
 environment = SubResource("Environment_tlwt5")
@@ -106,3 +115,9 @@ shape = SubResource("BoxShape3D_f3sb7")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Floor" unique_id=1163716272]
 mesh = SubResource("BoxMesh_f3sb7")
+
+[node name="DayNight" type="Node3D" parent="." unique_id=164321064]
+script = ExtResource("4_aqk2v")
+day_length_seconds = 60.0
+sun_path = NodePath("../DirectionalLight3D")
+env_path = NodePath("../WorldEnvironment")
