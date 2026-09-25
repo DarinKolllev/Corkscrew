@@ -30,6 +30,13 @@ extends CharacterBody3D
 @export var hang_climb_duration := 0.35     
 @export var shimmy_speed := 1.8  
 
+@export var bob_amplitude := 0.055
+@export var bob_frequency := 9.0
+@export var land_dip_threshold := 6.0     
+@export var land_dip_max := 0.25          
+@export var fov_kick_slide := 12.0
+@export var fov_kick_vault := 8.0
+
 # --- State ---
 var is_sliding := false
 var slide_timer := 0.0
@@ -44,6 +51,14 @@ var _hang_normal := Vector3.ZERO
 var _hang_climbing := false 
 var _grab_cooldown := 0.0
 
+var _bob_time := 0.0
+var _land_dip := 0.0
+var _fov_kick := 0.0
+var _recoil_pitch := 0.0
+var _prev_velocity_y := 0.0
+var _prev_on_floor := true
+var _base_cam_pos := Vector3.ZERO
+
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
 @onready var collision: CollisionShape3D = $CollisionShape3D
@@ -52,6 +67,7 @@ var _grab_cooldown := 0.0
 func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	camera.fov = fov_default
+	_base_cam_pos = camera.position
 
 func _input(e: InputEvent) -> void:
 	if e is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
@@ -141,8 +157,7 @@ func _physics_process(delta: float) -> void:
 		_tilt_target = 0.0
 
 	# Camera juice: FOV kick + wall-run tilt
-	camera.fov = lerp(camera.fov, fov_sprint if sprinting else fov_default, 6.0 * delta)
-	camera.rotation.z = lerp(camera.rotation.z, deg_to_rad(_tilt_target), 10.0 * delta)
+	update_camera_juice(delta, on_floor, sprinting)
 
 	move_and_slide()
 
@@ -156,6 +171,8 @@ func _start_slide() -> void:
 	_capsule.height = 1.0
 	collision.position.y = -0.4
 	head.position.y = 0.25
+	_fov_kick = fov_kick_slide
+	_recoil_pitch = deg_to_rad(-2.5)
 
 func _end_slide() -> void:
 	is_sliding = false
@@ -173,6 +190,8 @@ func _update_wall_run(delta: float) -> void:
 		if hit and Vector3(velocity.x, 0, velocity.z).length() > 3.0:
 			wall_normal = hit.normal
 			is_wall_running = true
+			if wall_run_timer < 0.05:
+				_fov_kick = 6.0
 			wall_run_timer += delta
 			if wall_run_timer > wall_run_max_time:
 				is_wall_running = false
@@ -218,6 +237,8 @@ func _try_vault() -> bool:
 	var side_x := Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
 	if abs(side_x) > 0.5:
 		velocity += transform.basis.x * sign(side_x) * vault_side_impulse
+		_fov_kick = fov_kick_vault
+	_recoil_pitch = deg_to_rad(-3.0)
 	return true
 	
 	# ---------------- LEDGE HANG ----------------
@@ -329,6 +350,7 @@ func _wall_still_there(offset: Vector3) -> bool:
 
 func _climb_up() -> void:
 	_hang_climbing = true
+	_recoil_pitch = deg_to_rad(-4.0)
 	var forward := -_hang_normal
 	# Head sits at origin.y + 0.7, and we snapped so head is (hang_head_below_ledge) below top.
 	# So the ledge top's world Y is:
@@ -354,3 +376,52 @@ func _drop_hang() -> void:
 	_hang_climbing = false
 	# Small backwards nudge so you don't instantly re-grab
 	velocity = _hang_normal * 2.0 + Vector3.DOWN * 1.0
+	
+	# ---------------- CAMERA JUICE ----------------
+func update_camera_juice(delta: float, on_floor: bool, sprinting: bool) -> void:
+	var horiz_speed := Vector3(velocity.x, 0, velocity.z).length()
+
+	# --- Head bob (only when grounded, moving, not sliding) ---
+	var bob_target := Vector3.ZERO
+	if on_floor and horiz_speed > 0.5 and not is_sliding and not is_hanging:
+		var speed_ratio := clampf(horiz_speed / sprint_speed, 0.0, 1.2)
+		var amp := bob_amplitude * speed_ratio
+		var freq := bob_frequency * (0.7 + 0.5 * speed_ratio)
+		_bob_time += delta * freq
+		bob_target = Vector3(
+			cos(_bob_time) * amp * 0.5,       # subtle side sway
+			sin(_bob_time * 2.0) * amp,       # vertical bob (2x freq)
+			0.0
+		)
+	else:
+		_bob_time = lerp(_bob_time, 0.0, 4.0 * delta)
+
+	# --- Landing dip (spring-back) ---
+	# Detect landing frame: was airborne, now on floor, was falling fast
+	if on_floor and not _prev_on_floor and _prev_velocity_y < -land_dip_threshold:
+		var dip := absf(_prev_velocity_y) * 0.025
+		_land_dip = clampf(dip, 0.05, land_dip_max)
+		# Big landing = extra FOV punch (feels heavy)
+		if dip > 0.15:
+			_fov_kick = max(_fov_kick, 6.0)
+	_land_dip = lerp(_land_dip, 0.0, 8.0 * delta)
+
+	# --- Apply position offsets ---
+	camera.position = _base_cam_pos + bob_target + Vector3(0, -_land_dip, 0)
+
+	# --- Wall-run tilt (roll) ---
+	camera.rotation.z = lerp(camera.rotation.z, deg_to_rad(_tilt_target), 10.0 * delta)
+
+	# --- Recoil pitch (vault / climb / hard land) ---
+	camera.rotation.x = lerp(camera.rotation.x, _recoil_pitch, 10.0 * delta)
+	_recoil_pitch = lerp(_recoil_pitch, 0.0, 6.0 * delta)
+
+	# --- FOV: base + sprint + transient kicks ---
+	var fov_target := fov_sprint if sprinting else fov_default
+	fov_target += _fov_kick
+	camera.fov = lerp(camera.fov, fov_target, 6.0 * delta)
+	_fov_kick = lerp(_fov_kick, 0.0, 5.0 * delta)
+
+	# --- Bookkeeping for next frame ---
+	_prev_velocity_y = velocity.y
+	_prev_on_floor = on_floor

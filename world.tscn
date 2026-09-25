@@ -2,7 +2,9 @@
 
 [ext_resource type="PackedScene" uid="uid://d1xu2a3j78m6l" path="res://player.tscn" id="1_f3sb7"]
 [ext_resource type="Texture2D" uid="uid://d1f8gjiwet3sr" path="res://textures/Metal053B_1K-JPG_Roughness.jpg" id="1_fj7yv"]
+[ext_resource type="Texture2D" uid="uid://bkjhhv8v6rvdu" path="res://textures/Texturelabs_Brick_172MROTATED.jpg" id="2_dwbse"]
 [ext_resource type="Texture2D" uid="uid://cms4ah4alt23s" path="res://textures/5FL0aasXQM0-HD.jpg" id="2_tlwt5"]
+[ext_resource type="Texture2D" uid="uid://cb2t2wncflvp" path="res://textures/Metal053B_1K-JPG_Displacement.jpg" id="4_036b0"]
 [ext_resource type="Script" uid="uid://c471s05kgrjmp" path="res://day_night.gd" id="4_aqk2v"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_f3sb7"]
@@ -25,6 +27,13 @@ fog_sky_affect = 0.3
 albedo_texture = ExtResource("1_fj7yv")
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_aqk2v"]
+albedo_texture = ExtResource("2_dwbse")
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_pkg7o"]
+albedo_texture = ExtResource("2_dwbse")
+uv1_world_triplanar = true
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_gbfbk"]
 albedo_texture = ExtResource("2_tlwt5")
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_f3sb7"]
@@ -32,6 +41,9 @@ size = Vector3(100, 1, 100)
 
 [sub_resource type="BoxMesh" id="BoxMesh_f3sb7"]
 size = Vector3(100, 1, 100)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_dwbse"]
+albedo_texture = ExtResource("4_036b0")
 
 [node name="world" type="Node3D" unique_id=1802278301]
 
@@ -79,13 +91,13 @@ size = Vector3(0.5, 4, 6)
 material = SubResource("StandardMaterial3D_f3sb7")
 
 [node name="Wall2_CSGBox3D" type="CSGBox3D" parent="Obstacles_Node3D" unique_id=681052755]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 2, -11.912598)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.132246, 2, -4.532515)
 use_collision = true
 size = Vector3(0.5, 4, 5.8251953)
 material = SubResource("StandardMaterial3D_aqk2v")
 
 [node name="GapPlatform_CSGBox3D" type="CSGBox3D" parent="Obstacles_Node3D" unique_id=2092658408]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0.5, -8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.9478607, 0.7046585, -8.182331)
 use_collision = true
 size = Vector3(4, 1, 4)
 
@@ -104,6 +116,18 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -10, 1.25, 0)
 use_collision = true
 size = Vector3(3, 2.5, 3)
 
+[node name="Wall3_CSGBox3D" type="CSGBox3D" parent="Obstacles_Node3D" unique_id=1008607134]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14.079317, 2.229724, -11.614119)
+use_collision = true
+size = Vector3(0.5, 4.1118164, 5.8251953)
+material = SubResource("StandardMaterial3D_pkg7o")
+
+[node name="Wall4_CSGBox3D" type="CSGBox3D" parent="Obstacles_Node3D" unique_id=1175278009]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 2, -11.912598)
+use_collision = true
+size = Vector3(0.5, 4, 5.8251953)
+material = SubResource("StandardMaterial3D_gbfbk")
+
 [node name="player" parent="." unique_id=499967983 instance=ExtResource("1_f3sb7")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 11.863993)
 
@@ -114,7 +138,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 shape = SubResource("BoxShape3D_f3sb7")
 
 [node name="MeshInstance3D" type="MeshInstance3D" parent="Floor" unique_id=1163716272]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.0630236, 0.22870827, 0.45601654)
 mesh = SubResource("BoxMesh_f3sb7")
+surface_material_override/0 = SubResource("StandardMaterial3D_dwbse")
 
 [node name="DayNight" type="Node3D" parent="." unique_id=164321064]
 script = ExtResource("4_aqk2v")
