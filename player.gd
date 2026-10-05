@@ -68,6 +68,9 @@ func _ready() -> void:
 	Input.set_mouse_mode(Input.MOUSE_MODE_CAPTURED)
 	camera.fov = fov_default
 	_base_cam_pos = camera.position
+	mouse_sensitivity = SaveManager.data.settings.mouse_sensitivity
+	camera.fov = SaveManager.data.settings.fov
+	fov_default = SaveManager.data.settings.fov
 
 func _input(e: InputEvent) -> void:
 	if e is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
@@ -80,6 +83,11 @@ func _input(e: InputEvent) -> void:
 			else Input.MOUSE_MODE_CAPTURED)
 	if e.is_action_pressed("jump"):
 		_jump_buffer_t = jump_buffer
+	if e is InputEventKey and e.pressed and e.keycode == KEY_F9:
+		print("F9 pressed. is_running=", GameState.is_running, " score=", GameState.score)
+		if GameState.is_running:
+			var r: Dictionary = GameState.finish_run()
+			print("Finished! time=%.2f score=%d (bonus=%d)" % [r.final_time, r.final_score, r.time_bonus])
 
 func _physics_process(delta: float) -> void:
 	_jump_buffer_t = max(_jump_buffer_t - delta, 0.0)
@@ -128,11 +136,13 @@ func _physics_process(delta: float) -> void:
 			velocity = wall_normal * wall_jump_force + Vector3.UP * jump_force
 			is_wall_running = false
 			_jump_buffer_t = 0.0
+			GameState.report_move("walljump")
 		elif _coyote > 0.0:
 			if _try_vault():
 				pass
 			else:
 				velocity.y = jump_force
+				GameState.report_move("jump")
 			_coyote = 0.0
 			_jump_buffer_t = 0.0
 
@@ -173,6 +183,7 @@ func _start_slide() -> void:
 	head.position.y = 0.25
 	_fov_kick = fov_kick_slide
 	_recoil_pitch = deg_to_rad(-2.5)
+	GameState.report_move("slide")
 
 func _end_slide() -> void:
 	is_sliding = false
@@ -192,6 +203,7 @@ func _update_wall_run(delta: float) -> void:
 			is_wall_running = true
 			if wall_run_timer < 0.05:
 				_fov_kick = 6.0
+				GameState.report_move("wallrun") 
 			wall_run_timer += delta
 			if wall_run_timer > wall_run_max_time:
 				is_wall_running = false
@@ -237,8 +249,9 @@ func _try_vault() -> bool:
 	var side_x := Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
 	if abs(side_x) > 0.5:
 		velocity += transform.basis.x * sign(side_x) * vault_side_impulse
-		_fov_kick = fov_kick_vault
-	_recoil_pitch = deg_to_rad(-3.0)
+		GameState.report_move("vault_right" if side_x > 0 else "vault_left")
+	else:
+		GameState.report_move("vault_forward")
 	return true
 	
 	# ---------------- LEDGE HANG ----------------
@@ -308,7 +321,7 @@ func _try_ledge_grab() -> bool:
 	if look_dir.length() > 0.01:
 		var yaw := atan2(look_dir.x, look_dir.z) + PI
 		rotation.y = yaw
-
+	GameState.report_move("ledge_grab")
 	return true
 
 func _process_hang(delta: float) -> void:
@@ -363,6 +376,12 @@ func _climb_up() -> void:
 	var target := mid + forward * 0.7
 
 	var tw := create_tween().set_trans(Tween.TRANS_SINE)
+	tw.tween_callback(func():
+		is_hanging = false
+		_hang_climbing = false
+		velocity = Vector3.ZERO
+		_grab_cooldown = 0.4
+		GameState.report_move("ledge_climb"))
 	tw.tween_property(self, "global_position", mid, hang_climb_duration * 0.5)
 	tw.tween_property(self, "global_position", target, hang_climb_duration * 0.5)
 	tw.tween_callback(func():

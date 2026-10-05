@@ -2,6 +2,7 @@
 
 [ext_resource type="PackedScene" uid="uid://d1xu2a3j78m6l" path="res://player.tscn" id="1_f3sb7"]
 [ext_resource type="Texture2D" uid="uid://d1f8gjiwet3sr" path="res://textures/Metal053B_1K-JPG_Roughness.jpg" id="1_fj7yv"]
+[ext_resource type="Script" uid="uid://d1g6lxdhk405r" path="res://world.gd" id="1_pkg7o"]
 [ext_resource type="Texture2D" uid="uid://bkjhhv8v6rvdu" path="res://textures/Texturelabs_Brick_172MROTATED.jpg" id="2_dwbse"]
 [ext_resource type="Texture2D" uid="uid://cms4ah4alt23s" path="res://textures/5FL0aasXQM0-HD.jpg" id="2_tlwt5"]
 [ext_resource type="Texture2D" uid="uid://cb2t2wncflvp" path="res://textures/Metal053B_1K-JPG_Displacement.jpg" id="4_036b0"]
@@ -46,6 +47,7 @@ size = Vector3(100, 1, 100)
 albedo_texture = ExtResource("4_036b0")
 
 [node name="world" type="Node3D" unique_id=1802278301]
+script = ExtResource("1_pkg7o")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="." unique_id=351834100]
 transform = Transform3D(1, 0, 0, 0, 0.70710677, 0.70710677, 0, -0.70710677, 0.70710677, 0, 0, 0)
