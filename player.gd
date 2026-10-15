@@ -78,9 +78,9 @@ func _input(e: InputEvent) -> void:
 		head.rotate_x(-e.relative.y * mouse_sensitivity)
 		head.rotation.x = clamp(head.rotation.x, -PI/2 + 0.01, PI/2 - 0.01)
 	if e.is_action_pressed("ui_cancel"):
-		Input.set_mouse_mode(
-			Input.MOUSE_MODE_VISIBLE if Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED
-			else Input.MOUSE_MODE_CAPTURED)
+		var pm := get_tree().current_scene.get_node_or_null("PauseMenu")
+		if pm and not pm.visible:
+			pm.open()
 	if e.is_action_pressed("jump"):
 		_jump_buffer_t = jump_buffer
 	if e is InputEventKey and e.pressed and e.keycode == KEY_F9:
