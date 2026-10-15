@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" uid="uid://cb2t2wncflvp" path="res://textures/Metal053B_1K-JPG_Displacement.jpg" id="4_036b0"]
 [ext_resource type="Script" uid="uid://c471s05kgrjmp" path="res://day_night.gd" id="4_aqk2v"]
 [ext_resource type="Script" uid="uid://10insjgi4xww" path="res://pause_menu.gd" id="8_gbfbk"]
+[ext_resource type="Script" uid="uid://bcxf1rtolhugg" path="res://main_menu.gd" id="9_ioo17"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_f3sb7"]
 
@@ -185,19 +186,20 @@ text = "Main menu"
 layout_mode = 2
 text = "Quit game"
 
-[node name="MainMenu" type="Control" parent="PauseMenu" unique_id=1637410422]
+[node name="MainMenu" type="Control" parent="." unique_id=1637410422]
 layout_mode = 3
 anchors_preset = 0
 offset_right = 40.0
 offset_bottom = 40.0
+script = ExtResource("9_ioo17")
 
-[node name="Bg" type="ColorRect" parent="PauseMenu/MainMenu" unique_id=1060185505]
+[node name="Bg" type="ColorRect" parent="MainMenu" unique_id=1060185505]
 layout_mode = 0
 offset_right = 40.0
 offset_bottom = 40.0
 color = Color(0, 0, 0.30980393, 1)
 
-[node name="Title" type="Label" parent="PauseMenu/MainMenu" unique_id=1518756601]
+[node name="Title" type="Label" parent="MainMenu" unique_id=1518756601]
 layout_mode = 0
 offset_right = 40.0
 offset_bottom = 23.0
@@ -205,25 +207,25 @@ theme_override_font_sizes/font_size = 30
 text = "CORKSCREW"
 horizontal_alignment = 1
 
-[node name="VBox" type="VBoxContainer" parent="PauseMenu/MainMenu" unique_id=602945251]
+[node name="VBox" type="VBoxContainer" parent="MainMenu" unique_id=602945251]
 layout_mode = 0
 offset_right = 40.0
 offset_bottom = 40.0
 alignment = 1
 
-[node name="PlayBtn" type="Button" parent="PauseMenu/MainMenu/VBox" unique_id=710174866]
+[node name="PlayBtn" type="Button" parent="MainMenu/VBox" unique_id=710174866]
 layout_mode = 2
 
-[node name="ContinueBtn" type="Button" parent="PauseMenu/MainMenu/VBox" unique_id=533187936]
+[node name="ContinueBtn" type="Button" parent="MainMenu/VBox" unique_id=533187936]
 layout_mode = 2
 
-[node name="SettingsBtn" type="Button" parent="PauseMenu/MainMenu/VBox" unique_id=933936335]
+[node name="SettingsBtn" type="Button" parent="MainMenu/VBox" unique_id=933936335]
 layout_mode = 2
 
-[node name="QuitBtn" type="Button" parent="PauseMenu/MainMenu/VBox" unique_id=930728537]
+[node name="QuitBtn" type="Button" parent="MainMenu/VBox" unique_id=930728537]
 layout_mode = 2
 
-[node name="BestTime" type="Label" parent="PauseMenu/MainMenu" unique_id=115859991]
+[node name="BestTime" type="Label" parent="MainMenu" unique_id=115859991]
 layout_mode = 0
 offset_right = 40.0
 offset_bottom = 23.0
