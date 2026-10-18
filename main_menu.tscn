@@ -1,0 +1,71 @@
+[gd_scene format=3 uid="uid://c1mgfon5uoy3x"]
+
+[ext_resource type="Script" uid="uid://bcxf1rtolhugg" path="res://main_menu.gd" id="1_06t4h"]
+[ext_resource type="PackedScene" uid="uid://clba6h661qllb" path="res://world.tscn" id="2_7vrkn"]
+
+[node name="MainMenu" type="Control" unique_id=814447470]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+script = ExtResource("1_06t4h")
+level_scene = ExtResource("2_7vrkn")
+
+[node name="Bg" type="ColorRect" parent="." unique_id=1220294541]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 40.0
+color = Color(0.019607844, 0.019607844, 0.019607844, 1)
+
+[node name="Title" type="Label" parent="." unique_id=364277550]
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -217.0
+offset_right = 217.0
+offset_bottom = 99.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 72
+text = "CORKSCREW"
+horizontal_alignment = 1
+
+[node name="VBox" type="VBoxContainer" parent="." unique_id=1035199933]
+layout_mode = 1
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -39.5
+offset_top = -68.0
+offset_right = 39.5
+offset_bottom = 68.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_constants/separation = 10
+
+[node name="PlayBtn" type="Button" parent="VBox" unique_id=612918965]
+layout_mode = 2
+text = "Play"
+
+[node name="ContinueBtn" type="Button" parent="VBox" unique_id=2082580518]
+layout_mode = 2
+text = "Continue"
+
+[node name="SettingsBtn" type="Button" parent="VBox" unique_id=1678013488]
+layout_mode = 2
+text = "Settings"
+
+[node name="QuitBtn" type="Button" parent="VBox" unique_id=2041749564]
+layout_mode = 2
+text = "Quit"
+
+[node name="BestTime" type="Label" parent="." unique_id=1131787975]
+layout_mode = 0
+offset_right = 40.0
+offset_bottom = 23.0
+text = "-"
+vertical_alignment = 2
