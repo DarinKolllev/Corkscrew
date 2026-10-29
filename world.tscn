@@ -8,6 +8,7 @@
 [ext_resource type="Texture2D" uid="uid://cb2t2wncflvp" path="res://textures/Metal053B_1K-JPG_Displacement.jpg" id="4_036b0"]
 [ext_resource type="Script" uid="uid://c471s05kgrjmp" path="res://day_night.gd" id="4_aqk2v"]
 [ext_resource type="Script" uid="uid://10insjgi4xww" path="res://pause_menu.gd" id="8_gbfbk"]
+[ext_resource type="PackedScene" uid="uid://dqonn6iuama5t" path="res://hud.tscn" id="9_ioo17"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_f3sb7"]
 
@@ -184,3 +185,6 @@ text = "Main menu"
 [node name="QuitBtn" type="Button" parent="PauseMenu/Panel/VBox" unique_id=1042686492]
 layout_mode = 2
 text = "Quit game"
+
+[node name="HUD" parent="." unique_id=957696854 instance=ExtResource("9_ioo17")]
+player_path = NodePath("../player")
