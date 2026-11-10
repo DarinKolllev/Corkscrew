@@ -65,6 +65,8 @@ var _base_cam_pos := Vector3.ZERO
 var _spawn_transform: Transform3D
 var _is_dying := false
 
+var _foot_timer := 0.0
+
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
 @onready var collision: CollisionShape3D = $CollisionShape3D
@@ -106,7 +108,7 @@ func _physics_process(delta: float) -> void:
 		_process_hang(delta)
 		move_and_slide()
 		return
-
+	
 	var on_floor := is_on_floor()
 	if on_floor:
 		_coyote = coyote_time
@@ -153,6 +155,7 @@ func _physics_process(delta: float) -> void:
 			else:
 				velocity.y = jump_force
 				GameState.report_move("jump")
+				AudioManager.sfx("jump")
 			_coyote = 0.0
 			_jump_buffer_t = 0.0
 
@@ -180,6 +183,18 @@ func _physics_process(delta: float) -> void:
 	update_camera_juice(delta, on_floor, sprinting)
 
 	move_and_slide()
+# --- Footstep sounds ---
+	var h_speed := Vector3(velocity.x, 0, velocity.z).length()
+
+	if is_on_floor() and h_speed > 2.0 and not is_sliding and not is_hanging:
+		_foot_timer -= delta * (1.0 + h_speed * 0.1)
+
+		if _foot_timer <= 0.0:
+			var step := "footstep%d" % randi_range(1, 4)
+			AudioManager.sfx(step, 0.15, -6.0)
+			_foot_timer = 0.4
+	else:
+		_foot_timer = 0.0
 
 # ---- Helpers ----
 func _start_slide() -> void:
@@ -194,6 +209,7 @@ func _start_slide() -> void:
 	_fov_kick = fov_kick_slide
 	_recoil_pitch = deg_to_rad(-2.5)
 	GameState.report_move("slide")
+	AudioManager.sfx("slide")
 
 func _end_slide() -> void:
 	is_sliding = false
