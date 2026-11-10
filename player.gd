@@ -37,6 +37,9 @@ extends CharacterBody3D
 @export var fov_kick_slide := 12.0
 @export var fov_kick_vault := 8.0
 
+@export var kill_y := -20.0           
+@export var respawn_fade := 0.25 
+
 # --- State ---
 var is_sliding := false
 var slide_timer := 0.0
@@ -59,6 +62,9 @@ var _prev_velocity_y := 0.0
 var _prev_on_floor := true
 var _base_cam_pos := Vector3.ZERO
 
+var _spawn_transform: Transform3D
+var _is_dying := false
+
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
 @onready var collision: CollisionShape3D = $CollisionShape3D
@@ -71,6 +77,7 @@ func _ready() -> void:
 	mouse_sensitivity = SaveManager.data.settings.mouse_sensitivity
 	camera.fov = SaveManager.data.settings.fov
 	fov_default = SaveManager.data.settings.fov
+	_spawn_transform = global_transform
 
 func _input(e: InputEvent) -> void:
 	if e is InputEventMouseMotion and Input.get_mouse_mode() == Input.MOUSE_MODE_CAPTURED:
@@ -90,6 +97,9 @@ func _input(e: InputEvent) -> void:
 			print("Finished! time=%.2f score=%d (bonus=%d)" % [r.final_time, r.final_score, r.time_bonus])
 
 func _physics_process(delta: float) -> void:
+	if not _is_dying and global_position.y < kill_y:
+		_die_and_respawn()
+		return
 	_jump_buffer_t = max(_jump_buffer_t - delta, 0.0)
 	_grab_cooldown = max(_grab_cooldown - delta, 0.0)
 	if is_hanging:
@@ -444,3 +454,40 @@ func update_camera_juice(delta: float, on_floor: bool, sprinting: bool) -> void:
 	# --- Bookkeeping for next frame ---
 	_prev_velocity_y = velocity.y
 	_prev_on_floor = on_floor
+	
+func _die_and_respawn() -> void:
+	_is_dying = true
+	velocity = Vector3.ZERO
+	# Flash black via a quick overlay on the HUD if present
+	var hud := get_tree().current_scene.get_node_or_null("HUD")
+	if hud:
+		var flash := ColorRect.new()
+		flash.color = Color(0, 0, 0, 0)
+		flash.anchor_right = 1.0; flash.anchor_bottom = 1.0
+		flash.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		hud.add_child(flash)
+		var tw := create_tween()
+		tw.tween_property(flash, "color:a", 1.0, respawn_fade)
+		tw.tween_callback(_do_respawn)
+		tw.tween_property(flash, "color:a", 0.0, respawn_fade)
+		tw.tween_callback(flash.queue_free)
+	else:
+		_do_respawn()
+
+func _do_respawn() -> void:
+	global_transform = _spawn_transform
+	velocity = Vector3.ZERO
+	# Reset camera roll / recoil so you don't respawn tilted
+	camera.rotation = Vector3.ZERO
+	head.rotation.x = 0
+	# Reset parkour state
+	is_sliding = false
+	is_wall_running = false
+	is_hanging = false
+	_hang_climbing = false
+	_capsule.height = 1.8
+	collision.position.y = 0.0
+	head.position.y = 0.7
+	# Restart the run so timer/score reset
+	GameState.start_run(GameState.current_level_id if GameState.current_level_id != "" else "tutorial")
+	_is_dying = false
