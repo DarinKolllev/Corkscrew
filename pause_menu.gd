@@ -25,3 +25,8 @@ func _restart() -> void:
 func _main_menu() -> void:
 	get_tree().paused = false
 	get_tree().change_scene_to_file("res://main_menu.tscn")
+
+func _unhandled_input(e: InputEvent) -> void:
+	if visible and e.is_action_pressed("ui_cancel"):
+		_resume()
+		get_viewport().set_input_as_handled()

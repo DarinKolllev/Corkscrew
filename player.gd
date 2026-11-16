@@ -24,21 +24,21 @@ extends CharacterBody3D
 @export var coyote_time := 0.14
 @export var jump_buffer := 0.18
 
-@export var hang_reach_height := 2.2      
-@export var hang_grip_offset := 0.35        
-@export var hang_head_below_ledge := 0.4    
-@export var hang_climb_duration := 0.35     
-@export var shimmy_speed := 1.8  
+@export var hang_reach_height := 2.2
+@export var hang_grip_offset := 0.35
+@export var hang_head_below_ledge := 0.4
+@export var hang_climb_duration := 0.35
+@export var shimmy_speed := 1.8
 
 @export var bob_amplitude := 0.055
 @export var bob_frequency := 9.0
-@export var land_dip_threshold := 6.0     
-@export var land_dip_max := 0.25          
+@export var land_dip_threshold := 6.0
+@export var land_dip_max := 0.25
 @export var fov_kick_slide := 12.0
 @export var fov_kick_vault := 8.0
 
-@export var kill_y := -20.0           
-@export var respawn_fade := 0.25 
+@export var kill_y := -20.0
+@export var respawn_fade := 0.25
 
 # --- State ---
 var is_sliding := false
@@ -51,7 +51,7 @@ var _jump_buffer_t := 0.0
 var _tilt_target := 0.0
 var is_hanging := false
 var _hang_normal := Vector3.ZERO
-var _hang_climbing := false 
+var _hang_climbing := false
 var _grab_cooldown := 0.0
 
 var _bob_time := 0.0
@@ -64,8 +64,6 @@ var _base_cam_pos := Vector3.ZERO
 
 var _spawn_transform: Transform3D
 var _is_dying := false
-
-var _foot_timer := 0.0
 
 @onready var head: Node3D = $Head
 @onready var camera: Camera3D = $Head/Camera3D
@@ -90,6 +88,7 @@ func _input(e: InputEvent) -> void:
 		var pm := get_tree().current_scene.get_node_or_null("PauseMenu")
 		if pm and not pm.visible:
 			pm.open()
+			get_viewport().set_input_as_handled()
 	if e.is_action_pressed("jump"):
 		_jump_buffer_t = jump_buffer
 	if e is InputEventKey and e.pressed and e.keycode == KEY_F9:
@@ -99,7 +98,9 @@ func _input(e: InputEvent) -> void:
 			print("Finished! time=%.2f score=%d (bonus=%d)" % [r.final_time, r.final_score, r.time_bonus])
 
 func _physics_process(delta: float) -> void:
-	if not _is_dying and global_position.y < kill_y:
+	if _is_dying:
+		return
+	if global_position.y < kill_y:
 		_die_and_respawn()
 		return
 	_jump_buffer_t = max(_jump_buffer_t - delta, 0.0)
@@ -108,7 +109,7 @@ func _physics_process(delta: float) -> void:
 		_process_hang(delta)
 		move_and_slide()
 		return
-	
+
 	var on_floor := is_on_floor()
 	if on_floor:
 		_coyote = coyote_time
@@ -130,7 +131,6 @@ func _physics_process(delta: float) -> void:
 		var target := wish * target_speed
 		velocity.x = lerp(velocity.x, target.x, ground_friction * delta)
 		velocity.z = lerp(velocity.z, target.z, ground_friction * delta)
-
 	# Air control (preserve momentum, gentle nudge)
 	elif not on_floor and not is_wall_running:
 		if wish.length() > 0.01:
@@ -138,7 +138,8 @@ func _physics_process(delta: float) -> void:
 			var target := wish * maxf(hv.length(), sprint_speed)
 			hv = hv.lerp(target, air_control * delta)
 			velocity.x = hv.x; velocity.z = hv.z
-			# Try to grab a ledge whenever airborne (and not wall-running)
+
+	# Try to grab a ledge whenever airborne (and not wall-running)
 	if not on_floor and not is_wall_running and not is_hanging:
 		_try_ledge_grab()
 
@@ -150,9 +151,7 @@ func _physics_process(delta: float) -> void:
 			_jump_buffer_t = 0.0
 			GameState.report_move("walljump")
 		elif _coyote > 0.0:
-			if _try_vault():
-				pass
-			else:
+			if not _try_vault():
 				velocity.y = jump_force
 				GameState.report_move("jump")
 				AudioManager.sfx("jump")
@@ -166,10 +165,9 @@ func _physics_process(delta: float) -> void:
 	# Sliding physics
 	if is_sliding:
 		slide_timer -= delta
-		# gentle decay so slide feels weighty
 		velocity.x = lerp(velocity.x, 0.0, 0.5 * delta)
 		velocity.z = lerp(velocity.z, 0.0, 0.5 * delta)
-		if slide_timer <= 0.0 or not Input.is_action_pressed("slide"):
+		if (slide_timer <= 0.0 or not Input.is_action_pressed("slide")) and _can_stand():
 			_end_slide()
 
 	# Wall run
@@ -179,22 +177,14 @@ func _physics_process(delta: float) -> void:
 		is_wall_running = false
 		_tilt_target = 0.0
 
-	# Camera juice: FOV kick + wall-run tilt
 	update_camera_juice(delta, on_floor, sprinting)
 
 	move_and_slide()
-# --- Footstep sounds ---
+
+	# Running sound loop
 	var h_speed := Vector3(velocity.x, 0, velocity.z).length()
-
-	if is_on_floor() and h_speed > 2.0 and not is_sliding and not is_hanging:
-		_foot_timer -= delta * (1.0 + h_speed * 0.1)
-
-		if _foot_timer <= 0.0:
-			var step := "footstep%d" % randi_range(1, 4)
-			AudioManager.sfx(step, 0.15, -6.0)
-			_foot_timer = 0.4
-	else:
-		_foot_timer = 0.0
+	var running := is_on_floor() and h_speed > 2.0 and not is_sliding and not is_hanging
+	AudioManager.set_loop("Run", running, -6.0, clampf(h_speed / sprint_speed, 0.8, 1.15))
 
 # ---- Helpers ----
 func _start_slide() -> void:
@@ -211,6 +201,11 @@ func _start_slide() -> void:
 	GameState.report_move("slide")
 	AudioManager.sfx("slide")
 
+func _can_stand() -> bool:
+	var q := PhysicsRayQueryParameters3D.create(global_position, global_position + Vector3.UP * 1.0)
+	q.exclude = [get_rid()]
+	return get_world_3d().direct_space_state.intersect_ray(q).is_empty()
+
 func _end_slide() -> void:
 	is_sliding = false
 	_capsule.height = 1.8
@@ -219,17 +214,16 @@ func _end_slide() -> void:
 
 func _update_wall_run(delta: float) -> void:
 	var space := get_world_3d().direct_space_state
-	var found := false
 	for dir in [transform.basis.x, -transform.basis.x]:
 		var q := PhysicsRayQueryParameters3D.create(global_position, global_position + dir * 0.7)
-		q.exclude = [self]
+		q.exclude = [get_rid()]
 		var hit := space.intersect_ray(q)
 		if hit and Vector3(velocity.x, 0, velocity.z).length() > 3.0:
 			wall_normal = hit.normal
 			is_wall_running = true
 			if wall_run_timer < 0.05:
 				_fov_kick = 6.0
-				GameState.report_move("wallrun") 
+				GameState.report_move("wallrun")
 			wall_run_timer += delta
 			if wall_run_timer > wall_run_max_time:
 				is_wall_running = false
@@ -241,36 +235,28 @@ func _update_wall_run(delta: float) -> void:
 				along = -along
 			velocity.x = along.x * wall_run_speed
 			velocity.z = along.z * wall_run_speed
-			# tilt: right-wall = tilt left, and vice versa
 			_tilt_target = -tilt_max_deg if wall_normal.dot(transform.basis.x) > 0 else tilt_max_deg
-			found = true
 			return
-	if not found:
-		is_wall_running = false
-		_tilt_target = 0.0
+	is_wall_running = false
+	_tilt_target = 0.0
 
 func _try_vault() -> bool:
-	# If facing a low obstacle within mantle_height, hop onto it. Side input adds lateral impulse.
 	var space := get_world_3d().direct_space_state
 	var forward := -transform.basis.z
-	# 1) is something in front?
 	var q1 := PhysicsRayQueryParameters3D.create(global_position + Vector3.UP * 0.4,
 		global_position + Vector3.UP * 0.4 + forward * 0.9)
-	q1.exclude = [self]
+	q1.exclude = [get_rid()]
 	if space.intersect_ray(q1).is_empty():
 		return false
-	# 2) is the top within reach?
 	var top_probe := global_position + Vector3.UP * mantle_height + forward * 0.9
 	var q2 := PhysicsRayQueryParameters3D.create(top_probe, top_probe + Vector3.DOWN * (mantle_height + 0.1))
-	q2.exclude = [self]
+	q2.exclude = [get_rid()]
 	var hit := space.intersect_ray(q2)
 	if hit.is_empty():
 		return false
 	var top: Vector3 = hit.position + Vector3.UP * 0.05
-	# If the ledge is high enough to hang from, don't vault — let the ledge-grab handle it
 	if top.y - global_position.y > 1.2:
-		return false 
-	# Do a smooth hop via velocity, so physics stays clean
+		return false
 	velocity.y = jump_force * 1.05
 	var side_x := Input.get_action_strength("move_right") - Input.get_action_strength("move_left")
 	if abs(side_x) > 0.5:
@@ -279,202 +265,137 @@ func _try_vault() -> bool:
 	else:
 		GameState.report_move("vault_forward")
 	return true
-	
-	# ---------------- LEDGE HANG ----------------
+
+# ---------------- LEDGE HANG ----------------
 func _try_ledge_grab() -> bool:
 	if _grab_cooldown > 0.0:
 		return false
 	if velocity.y > 8.0:
 		return false
-
-
 	var space := get_world_3d().direct_space_state
 	var forward := -transform.basis.z
 
-	# High probe: is there NO wall at very top of reach? (means ledge top is below reach)
 	var high_from := global_position + Vector3.UP * hang_reach_height
-	var high_to   := high_from + forward * 0.9
-	var q_high := PhysicsRayQueryParameters3D.create(high_from, high_to)
-	q_high.exclude = [self]
+	var q_high := PhysicsRayQueryParameters3D.create(high_from, high_from + forward * 0.9)
+	q_high.exclude = [get_rid()]
 	if not space.intersect_ray(q_high).is_empty():
-		return false  # wall is too tall — can't reach over it
+		return false
 
-	# Chest probe: is there a wall at grab height? (means something IS in front of us)
 	var chest_from := global_position + Vector3.UP * (hang_reach_height - 0.5)
-	var chest_to   := chest_from + forward * 0.9
-	var q_chest := PhysicsRayQueryParameters3D.create(chest_from, chest_to)
-	q_chest.exclude = [self]
+	var q_chest := PhysicsRayQueryParameters3D.create(chest_from, chest_from + forward * 0.9)
+	q_chest.exclude = [get_rid()]
 	var chest_hit := space.intersect_ray(q_chest)
 	if chest_hit.is_empty():
 		return false
 
-	# Downward probe: find the top of that wall from just past the high probe
 	var down_from := high_from + forward * 0.7
-	var down_to   := down_from + Vector3.DOWN * 0.8
-	var q_down := PhysicsRayQueryParameters3D.create(down_from, down_to)
-	q_down.exclude = [self]
+	var q_down := PhysicsRayQueryParameters3D.create(down_from, down_from + Vector3.DOWN * 0.8)
+	q_down.exclude = [get_rid()]
 	var top_hit := space.intersect_ray(q_down)
 	if top_hit.is_empty():
 		return false
-	# Reject slopes: only grab near-flat ledges
 	if (top_hit.normal as Vector3).dot(Vector3.UP) < 0.7:
 		return false
 
-	# Snap player to grip position
 	var ledge_top: Vector3 = top_hit.position
-	var wall_normal: Vector3 = chest_hit.normal
-	_hang_normal = wall_normal
+	var n: Vector3 = chest_hit.normal
+	_hang_normal = n
 	is_hanging = true
 	velocity = Vector3.ZERO
-
-	# Position: head sits `hang_head_below_ledge` below top, body pushed off wall by grip_offset
-	# Head is at global_position + Vector3.UP * 0.7 (from your scene), so player origin needs adjust.
-	var head_local_y := 0.7  # matches Head node position in player.tscn
-	var target_pos := ledge_top \
-		+ wall_normal * hang_grip_offset \
-		- Vector3.UP * (head_local_y + hang_head_below_ledge - (ledge_top.y - ledge_top.y)) \
-		+ Vector3.UP * (-hang_head_below_ledge)
-	# Simpler & correct: put player origin so that (origin.y + head_local_y) == ledge_top.y - hang_head_below_ledge
-	target_pos = Vector3(
-		ledge_top.x + wall_normal.x * hang_grip_offset,
+	var head_local_y := 0.7
+	global_position = Vector3(
+		ledge_top.x + n.x * hang_grip_offset,
 		ledge_top.y - hang_head_below_ledge - head_local_y,
-		ledge_top.z + wall_normal.z * hang_grip_offset
+		ledge_top.z + n.z * hang_grip_offset
 	)
-	global_position = target_pos
-
-	# Face the wall
-	var look_dir := -Vector3(wall_normal.x, 0, wall_normal.z).normalized()
+	var look_dir := -Vector3(n.x, 0, n.z).normalized()
 	if look_dir.length() > 0.01:
-		var yaw := atan2(look_dir.x, look_dir.z) + PI
-		rotation.y = yaw
+		rotation.y = atan2(look_dir.x, look_dir.z) + PI
 	GameState.report_move("ledge_grab")
 	return true
 
 func _process_hang(delta: float) -> void:
+	velocity = Vector3.ZERO
+	if _hang_climbing:
+		return
 	if Input.is_action_just_pressed("jump") or Input.is_action_just_pressed("move_forward"):
 		_climb_up()
 		return
-
-	# Stick in place, ignore gravity
-	velocity = Vector3.ZERO
-
-	# Shimmy left/right along the ledge (perpendicular to wall normal, on XZ plane)
+	if Input.is_action_just_pressed("slide") or Input.is_action_just_pressed("move_backward"):
+		_drop_hang()
+		return
 	var side := Input.get_action_strength("move_left") - Input.get_action_strength("move_right")
 	if abs(side) > 0.1:
-		var along := _hang_normal.cross(Vector3.UP).normalized()
-		var move_vec := along * side * shimmy_speed
-		# Test if there's still a wall to grab in the new spot; if not, stop
+		var move_vec := _hang_normal.cross(Vector3.UP).normalized() * side * shimmy_speed
 		if _wall_still_there(move_vec * delta):
 			global_position += move_vec * delta
-		# else: silently block movement (edge of the ledge)
-
-	# Climb up: W or Space
-	if Input.is_action_just_pressed("jump") or Input.is_action_pressed("move_forward"):
-		_climb_up()
-		return
-
-	# Drop off: Ctrl/slide or S
-	if Input.is_action_just_pressed("slide") or Input.is_action_pressed("move_backward"):
-		_drop_hang()
 
 func _wall_still_there(offset: Vector3) -> bool:
 	var space := get_world_3d().direct_space_state
-	var forward := -_hang_normal
-	# Probe from head height (0.7 above origin), slightly below the ledge top
 	var from := global_position + offset + Vector3.UP * 0.7 + Vector3.DOWN * (hang_head_below_ledge + 0.1)
-	var to   := from + forward * 0.8
-	var q := PhysicsRayQueryParameters3D.create(from, to)
-	q.exclude = [self]
+	var q := PhysicsRayQueryParameters3D.create(from, from - _hang_normal * 0.8)
+	q.exclude = [get_rid()]
 	return not space.intersect_ray(q).is_empty()
 
 func _climb_up() -> void:
 	_hang_climbing = true
 	_recoil_pitch = deg_to_rad(-4.0)
-	var forward := -_hang_normal
-	# Head sits at origin.y + 0.7, and we snapped so head is (hang_head_below_ledge) below top.
-	# So the ledge top's world Y is:
-	var ledge_top_y := global_position.y + 0.7 + hang_head_below_ledge
-	# Capsule half-height is 0.9 → feet touch ledge_top when origin.y = ledge_top_y + 0.9
-	var final_y := ledge_top_y + 0.95
-	# Mid-point: straight up above current XZ, so we clear the lip first
+	GameState.report_move("ledge_climb")
+	var final_y := global_position.y + 0.7 + hang_head_below_ledge + 0.95
 	var mid := Vector3(global_position.x, final_y, global_position.z)
-	# Then forward by ~0.7 to plant feet on top of the ledge
-	var target := mid + forward * 0.7
-
+	var target := mid - _hang_normal * 0.7
 	var tw := create_tween().set_trans(Tween.TRANS_SINE)
-	tw.tween_callback(func():
-		is_hanging = false
-		_hang_climbing = false
-		velocity = Vector3.ZERO
-		_grab_cooldown = 0.4
-		GameState.report_move("ledge_climb"))
 	tw.tween_property(self, "global_position", mid, hang_climb_duration * 0.5)
 	tw.tween_property(self, "global_position", target, hang_climb_duration * 0.5)
 	tw.tween_callback(func():
 		is_hanging = false
 		_hang_climbing = false
 		velocity = Vector3.ZERO
-		_grab_cooldown = 0.4)   # prevent instant re-grab
+		_grab_cooldown = 0.4)
 
 func _drop_hang() -> void:
 	is_hanging = false
 	_hang_climbing = false
-	# Small backwards nudge so you don't instantly re-grab
 	velocity = _hang_normal * 2.0 + Vector3.DOWN * 1.0
-	
-	# ---------------- CAMERA JUICE ----------------
+
+# ---------------- CAMERA JUICE ----------------
 func update_camera_juice(delta: float, on_floor: bool, sprinting: bool) -> void:
 	var horiz_speed := Vector3(velocity.x, 0, velocity.z).length()
 
-	# --- Head bob (only when grounded, moving, not sliding) ---
 	var bob_target := Vector3.ZERO
 	if on_floor and horiz_speed > 0.5 and not is_sliding and not is_hanging:
 		var speed_ratio := clampf(horiz_speed / sprint_speed, 0.0, 1.2)
 		var amp := bob_amplitude * speed_ratio
 		var freq := bob_frequency * (0.7 + 0.5 * speed_ratio)
 		_bob_time += delta * freq
-		bob_target = Vector3(
-			cos(_bob_time) * amp * 0.5,       # subtle side sway
-			sin(_bob_time * 2.0) * amp,       # vertical bob (2x freq)
-			0.0
-		)
+		bob_target = Vector3(cos(_bob_time) * amp * 0.5, sin(_bob_time * 2.0) * amp, 0.0)
 	else:
 		_bob_time = lerp(_bob_time, 0.0, 4.0 * delta)
 
-	# --- Landing dip (spring-back) ---
-	# Detect landing frame: was airborne, now on floor, was falling fast
 	if on_floor and not _prev_on_floor and _prev_velocity_y < -land_dip_threshold:
 		var dip := absf(_prev_velocity_y) * 0.025
 		_land_dip = clampf(dip, 0.05, land_dip_max)
-		# Big landing = extra FOV punch (feels heavy)
+		AudioManager.sfx("land")
 		if dip > 0.15:
 			_fov_kick = max(_fov_kick, 6.0)
 	_land_dip = lerp(_land_dip, 0.0, 8.0 * delta)
 
-	# --- Apply position offsets ---
 	camera.position = _base_cam_pos + bob_target + Vector3(0, -_land_dip, 0)
-
-	# --- Wall-run tilt (roll) ---
 	camera.rotation.z = lerp(camera.rotation.z, deg_to_rad(_tilt_target), 10.0 * delta)
-
-	# --- Recoil pitch (vault / climb / hard land) ---
 	camera.rotation.x = lerp(camera.rotation.x, _recoil_pitch, 10.0 * delta)
 	_recoil_pitch = lerp(_recoil_pitch, 0.0, 6.0 * delta)
 
-	# --- FOV: base + sprint + transient kicks ---
 	var fov_target := fov_sprint if sprinting else fov_default
 	fov_target += _fov_kick
 	camera.fov = lerp(camera.fov, fov_target, 6.0 * delta)
 	_fov_kick = lerp(_fov_kick, 0.0, 5.0 * delta)
 
-	# --- Bookkeeping for next frame ---
 	_prev_velocity_y = velocity.y
 	_prev_on_floor = on_floor
-	
+
 func _die_and_respawn() -> void:
 	_is_dying = true
 	velocity = Vector3.ZERO
-	# Flash black via a quick overlay on the HUD if present
 	var hud := get_tree().current_scene.get_node_or_null("HUD")
 	if hud:
 		var flash := ColorRect.new()
@@ -493,10 +414,11 @@ func _die_and_respawn() -> void:
 func _do_respawn() -> void:
 	global_transform = _spawn_transform
 	velocity = Vector3.ZERO
-	# Reset camera roll / recoil so you don't respawn tilted
 	camera.rotation = Vector3.ZERO
 	head.rotation.x = 0
-	# Reset parkour state
+	_tilt_target = 0.0
+	_fov_kick = 0.0
+	_recoil_pitch = 0.0
 	is_sliding = false
 	is_wall_running = false
 	is_hanging = false
@@ -504,6 +426,5 @@ func _do_respawn() -> void:
 	_capsule.height = 1.8
 	collision.position.y = 0.0
 	head.position.y = 0.7
-	# Restart the run so timer/score reset
 	GameState.start_run(GameState.current_level_id if GameState.current_level_id != "" else "tutorial")
 	_is_dying = false
