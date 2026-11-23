@@ -38,18 +38,26 @@ func _on_combo_changed(count: int, mult: float) -> void:
 		tw.tween_property(_combo_mult, "scale", Vector2.ONE, 0.2).set_trans(Tween.TRANS_BACK)
 
 func _on_move_scored(move_id: String, points: int, mult: float) -> void:
+	# Cap the number of simultaneous popups
+	if _popup_layer.get_child_count() >= 5:
+		var oldest := _popup_layer.get_child(0)
+		oldest.queue_free()
+
 	var popup := Label.new()
 	popup.text = "+%d  %s" % [points, move_id.replace("_", " ").to_upper()]
-	popup.add_theme_font_size_override("font_size", 28)
+	popup.add_theme_font_size_override("font_size", 24)
 	popup.add_theme_color_override("font_color", Color(1, 0.9, 0.4))
-	popup.position = Vector2(
-		get_viewport().get_visible_rect().size.x * 0.5 - 120 + randf_range(-20, 20),
-		get_viewport().get_visible_rect().size.y * 0.5 + 40
-	)
 	popup.modulate.a = 0.0
 	_popup_layer.add_child(popup)
+
+	# Position: stacked vertically on the right side
+	var screen_w: float = get_viewport().get_visible_rect().size.x
+	var screen_h: float = get_viewport().get_visible_rect().size.y
+	var index := _popup_layer.get_child_count() - 1
+	popup.position = Vector2(screen_w * 0.72, screen_h * 0.45 + index * 32)
+
 	var tw := create_tween().set_parallel(true)
-	tw.tween_property(popup, "modulate:a", 1.0, 0.15)
-	tw.tween_property(popup, "position:y", popup.position.y - 80.0, 1.0)
-	tw.chain().tween_property(popup, "modulate:a", 0.0, 0.4)
+	tw.tween_property(popup, "modulate:a", 1.0, 0.1)
+	tw.tween_property(popup, "position:x", popup.position.x - 30.0, 0.9)
+	tw.chain().tween_property(popup, "modulate:a", 0.0, 0.3)
 	tw.chain().tween_callback(popup.queue_free)

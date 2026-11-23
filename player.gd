@@ -91,11 +91,6 @@ func _input(e: InputEvent) -> void:
 			get_viewport().set_input_as_handled()
 	if e.is_action_pressed("jump"):
 		_jump_buffer_t = jump_buffer
-	if e is InputEventKey and e.pressed and e.keycode == KEY_F9:
-		print("F9 pressed. is_running=", GameState.is_running, " score=", GameState.score)
-		if GameState.is_running:
-			var r: Dictionary = GameState.finish_run()
-			print("Finished! time=%.2f score=%d (bonus=%d)" % [r.final_time, r.final_score, r.time_bonus])
 
 func _physics_process(delta: float) -> void:
 	if _is_dying:

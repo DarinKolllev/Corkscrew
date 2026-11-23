@@ -9,6 +9,7 @@
 [ext_resource type="Script" uid="uid://c471s05kgrjmp" path="res://day_night.gd" id="4_aqk2v"]
 [ext_resource type="Script" uid="uid://10insjgi4xww" path="res://pause_menu.gd" id="8_gbfbk"]
 [ext_resource type="PackedScene" path="res://hud.tscn" id="9_ioo17"]
+[ext_resource type="PackedScene" path="res://finish_pad.tscn" id="10_wse8f"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_f3sb7"]
 
@@ -188,3 +189,6 @@ text = "Quit game"
 
 [node name="HUD" parent="." unique_id=957696854 instance=ExtResource("9_ioo17")]
 player_path = NodePath("../player")
+
+[node name="FinishPad" parent="." unique_id=1452190714 instance=ExtResource("10_wse8f")]
+transform = Transform3D(0.99990386, 0.0038812603, 0.013311458, -0.0040379586, 0.9999227, 0.01176472, -0.013264764, -0.011817338, 0.99984217, -0.7691231, 0.34546804, 21.043812)
